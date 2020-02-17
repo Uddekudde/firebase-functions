@@ -12,11 +12,20 @@ const OFFER_COLLECTION = "commission-offers";
 
 app.get(OFFER_URL, (req, res) => {
   db.collection(OFFER_COLLECTION)
+    .orderBy("createdAt", "desc")
     .get()
     .then(data => {
       let offers = [];
       data.forEach(doc => {
-        offers.push(doc.data());
+        offers.push({
+          offerId: doc.id,
+          cancellation: doc.data().cancellation,
+          description: doc.data().description,
+          price: doc.data().price,
+          userId: doc.data().userId,
+          example: doc.data().example,
+          createdAt: doc.data().createdAt
+        });
       });
       return res.json(offers);
     })
@@ -32,7 +41,7 @@ app.post(OFFER_URL, (req, res) => {
     price: req.body.price,
     userId: req.body.userId,
     example: req.body.example,
-    createdAt: admin.firestore.Timestamp.fromDate(new Date())
+    createdAt: new Date().toISOString()
   };
 
   db.collection(OFFER_COLLECTION)
@@ -46,4 +55,4 @@ app.post(OFFER_URL, (req, res) => {
     });
 });
 
-exports.api = functions.https.onRequest(app);
+exports.api = functions.region('europe-west1').https.onRequest(app);
