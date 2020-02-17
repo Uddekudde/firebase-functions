@@ -8,9 +8,10 @@ const app = express();
 const db = admin.firestore();
 
 const OFFER_URL = "/offers";
+const OFFER_COLLECTION = "commission-offers";
 
 app.get(OFFER_URL, (req, res) => {
-  db.collection("commission-offers")
+  db.collection(OFFER_COLLECTION)
     .get()
     .then(data => {
       let offers = [];
@@ -24,8 +25,25 @@ app.get(OFFER_URL, (req, res) => {
     });
 });
 
-exports.helloWorld = functions.https.onRequest((request, response) => {
-  response.send("Hello from Firebase!");
+app.post(OFFER_URL, (req, res) => {
+  const newOffer = {
+    cancellation: req.body.cancellation,
+    description: req.body.description,
+    price: req.body.price,
+    userId: req.body.userId,
+    example: req.body.example,
+    createdAt: admin.firestore.Timestamp.fromDate(new Date())
+  };
+
+  db.collection(OFFER_COLLECTION)
+    .add(newOffer)
+    .then(doc => {
+      res.json({ message: `document ${doc.id} created successfully` });
+    })
+    .catch(err => {
+      res.status(500).json({ error: "something went wrong" });
+      console.error(err);
+    });
 });
 
 exports.api = functions.https.onRequest(app);
