@@ -18,12 +18,14 @@ const firebaseConfig = {
 const firebase = require("firebase");
 firebase.initializeApp(firebaseConfig);
 
-const OFFER_URL = "/offers";
+const OFFER_ROUTE = "/offers";
 const OFFER_COLLECTION = "commission-offers";
-const SIGNUP_URL = "/signup";
+const SIGNUP_ROUTE = "/signup";
+const LOGIN_ROUTE = "/login";
 const EMAIL_TAKEN_ERROR = "auth/email-already-in-use";
+const WRONG_PASSWORD_ERROR = "auth/wrong-password";
 
-app.get(OFFER_URL, (req, res) => {
+app.get(OFFER_ROUTE, (req, res) => {
   db.collection(OFFER_COLLECTION)
     .orderBy("createdAt", "desc")
     .get()
@@ -47,7 +49,7 @@ app.get(OFFER_URL, (req, res) => {
     });
 });
 
-app.post(OFFER_URL, (req, res) => {
+app.post(OFFER_ROUTE, (req, res) => {
   const newOffer = {
     cancellation: req.body.cancellation,
     description: req.body.description,
@@ -68,7 +70,16 @@ app.post(OFFER_URL, (req, res) => {
     });
 });
 
-app.post(SIGNUP_URL, (req, res) => {
+const isEmpty = string => {
+  return string.trim() === "" ? true : false;
+};
+
+const isEmail = email => {
+  const emailRegEx = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  return email.match(emailRegEx) ? true : false;
+};
+
+app.post(SIGNUP_ROUTE, (req, res) => {
   const newUser = {
     email: req.body.email,
     password: req.body.password,
@@ -76,7 +87,19 @@ app.post(SIGNUP_URL, (req, res) => {
     confirmPassword: req.body.confirmPassword
   };
 
-  //TODO: validate data
+  let errors = {};
+  if (isEmpty(newUser.email)) {
+    errors.email = "Must not be empty";
+  } else if (!isEmail(newUser.email)) {
+    errors.email = "Must be a valid email address";
+  }
+  if (isEmpty(newUser.password)) errors.password = "Must not be empty";
+  if (isEmpty(newUser.handle)) errors.handle = "Must not be empty";
+  if (newUser.password !== newUser.confirmPassword)
+    errors.confirmPassword = "Passwords must match";
+
+  if (Object.keys(errors).length > 0) return res.status(400).json(errors);
+
   let token, userId;
   db.doc(`/users/${newUser.handle}`)
     .get()
@@ -103,8 +126,9 @@ app.post(SIGNUP_URL, (req, res) => {
         userId
       };
       db.doc(`/users/${newUser.handle}`).set(userCredentials);
-    }).then(()=>{
-      return res.status(200).json({token})
+    })
+    .then(() => {
+      return res.status(200).json({ token });
     })
     .catch(err => {
       console.error(err);
@@ -113,6 +137,35 @@ app.post(SIGNUP_URL, (req, res) => {
       } else {
         return res.status(500).json({ error: err.code });
       }
+    });
+});
+
+app.post(LOGIN_ROUTE, (req, res) => {
+  const user = {
+    email: req.body.email,
+    password: req.body.password
+  };
+  let errors = {};
+  if (isEmpty(user.password)) errors.password = "Must not be empty";
+  if (isEmpty(user.email)) errors.email = "Must not be empty";
+  if (Object.keys(errors).length > 0) return res.status(400).json(errors);
+
+  firebase
+    .auth()
+    .signInWithEmailAndPassword(user.email, user.password)
+    .then(data => {
+      return data.user.getIdToken();
+    })
+    .then(token => {
+      return res.json({ token });
+    })
+    .catch(err => {
+      console.error(err);
+      return err.code === WRONG_PASSWORD_ERROR
+        ? res
+            .status(403)
+            .json({ general: "Wrong credentials, please try again" })
+        : res.status(500).json({ error: err.code });
     });
 });
 
