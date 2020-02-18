@@ -37,7 +37,7 @@ app.get(OFFER_ROUTE, (req, res) => {
           cancellation: doc.data().cancellation,
           description: doc.data().description,
           price: doc.data().price,
-          userId: doc.data().userId,
+          handle: doc.data().handle,
           example: doc.data().example,
           createdAt: doc.data().createdAt
         });
@@ -49,12 +49,45 @@ app.get(OFFER_ROUTE, (req, res) => {
     });
 });
 
-app.post(OFFER_ROUTE, (req, res) => {
+const FBAuth = (req, res, next) => {
+  let idToken;
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+  ) {
+    idToken = req.headers.authorization.split("Bearer ")[1];
+  } else {
+    console.error("No token found");
+    return Response.status(403).json({ error: "Unathorized" });
+  }
+
+  admin
+    .auth()
+    .verifyIdToken(idToken)
+    .then(decodedToken => {
+      req.user = decodedToken;
+      return db
+        .collection("users")
+        .where("userId", "==", req.user.uid)
+        .limit(1)
+        .get();
+    })
+    .then(data => {
+      req.user.handle = data.docs[0].data().handle;
+      return next();
+    })
+    .catch(err => {
+      console.error("Error while verifying token");
+      return res.status(403).json(err);
+    });
+};
+
+app.post(OFFER_ROUTE, FBAuth, (req, res) => {
   const newOffer = {
     cancellation: req.body.cancellation,
     description: req.body.description,
     price: req.body.price,
-    userId: req.body.userId,
+    handle: req.user.handle,
     example: req.body.example,
     createdAt: new Date().toISOString()
   };
