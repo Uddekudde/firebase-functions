@@ -2,7 +2,11 @@ const { admin, db } = require("../util/admin");
 const firebaseConfig = require("../util/config");
 const firebase = require("firebase");
 firebase.initializeApp(firebaseConfig);
-const { validateSignupData, validateLoginData } = require("../util/validators");
+const {
+  validateSignupData,
+  validateLoginData,
+  reduceUserDetails
+} = require("../util/validators");
 
 const EMAIL_TAKEN_ERROR = "auth/email-already-in-use";
 const WRONG_PASSWORD_ERROR = "auth/wrong-password";
@@ -11,6 +15,7 @@ const MIMETYPE_PNG = "image/png";
 const MIMETYPE_jpeg = "image/jpeg";
 const MIMETYPE_jpg = "image/jpg";
 
+//Signup new user
 exports.signup = (req, res) => {
   const newUser = {
     email: req.body.email,
@@ -63,13 +68,14 @@ exports.signup = (req, res) => {
     });
 };
 
+//Login
 exports.login = (req, res) => {
   const user = {
     email: req.body.email,
     password: req.body.password
   };
 
-  const { valid, errors } = validateLoginData(newUser);
+  const { valid, errors } = validateLoginData(user);
 
   if (!valid) return res.status(400).json(errors);
 
@@ -92,6 +98,42 @@ exports.login = (req, res) => {
     });
 };
 
+//Add user details
+exports.addUserDetails = (req, res) => {
+  let userDetails = reduceUserDetails(req.body);
+
+  db.doc(`/users/${req.user.handle}`)
+    .update(userDetails)
+    .then(() => {
+      return res
+        .json({ message: "Details successfully updated" })
+        .catch(err => {
+          console.log(err);
+          return res.status(500).json({ error: err.code });
+        });
+    });
+};
+
+//Get own user details
+exports.getUserInfo = (req, res) => {
+  let userData = {};
+  db.doc(`/users/${req.user.handle}`)
+    .get()
+    .then(doc => {
+      if (doc.exists) {
+        userData.credentials = doc.data();
+        return res.json(userData);
+      } else {
+        return res.json({ message: "no data found" });
+      }
+    })
+    .catch(err => {
+      console.log(err);
+      return res.status(500).json({ error: err.code });
+    });
+};
+
+//Upload new profile image
 exports.uploadImage = (req, res) => {
   const BusBoy = require("busboy");
   const path = require("path");
