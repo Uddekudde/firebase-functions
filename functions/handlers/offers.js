@@ -1,6 +1,8 @@
 const { db } = require("../util/admin");
 
 const OFFER_COLLECTION = "commission-offers";
+const OFFER_REPLIES_COLLECTION = "offer-reply";
+const OFFER_ID_FIELD = "offerId";
 
 exports.getAllOffers = (req, res) => {
   db.collection(OFFER_COLLECTION)
@@ -23,6 +25,37 @@ exports.getAllOffers = (req, res) => {
     })
     .catch(err => {
       console.error(err);
+    });
+};
+
+exports.getOfferReplies = (req, res) => {
+  let offerData = {};
+  db.doc(`/${OFFER_COLLECTION}/${req.params.offerId}`)
+    .get()
+    .then(doc => {
+      if (!doc.exists) {
+        return res.status(404).json({ error: "Offer not found" });
+      }
+      offerData = doc.data();
+      if (req.user.handle !== offerData.handle) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      offerData.offerId = doc.id;
+      return db
+        .collection(OFFER_REPLIES_COLLECTION)
+        .orderBy("createdAt", "desc")
+        .where(OFFER_ID_FIELD, "==", req.params.offerId)
+        .get()
+        .then(data => {
+          offerData.replies = [];
+          data.forEach(doc => {
+            offerData.replies.push(doc.data());
+          });
+          return res.json(offerData);
+        })
+        .catch(err => {
+          return res.status(500).json({ error: err.code });
+        });
     });
 };
 
