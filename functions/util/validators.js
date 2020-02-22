@@ -7,17 +7,21 @@ const isEmail = email => {
   return email.match(emailRegEx) ? true : false;
 };
 
+const NO_EMPTY_MESSAGE = "Must not be empty";
+const VALID_EMAIL_MESSAGE = "Must be a valid email address";
+const MATCH_PASSWORDS_MESSAGE = "Passwords must match";
+
 exports.validateSignupData = data => {
   let errors = {};
   if (isEmpty(data.email)) {
-    errors.email = "Must not be empty";
+    errors.email = NO_EMPTY_MESSAGE;
   } else if (!isEmail(data.email)) {
-    errors.email = "Must be a valid email address";
+    errors.email = VALID_EMAIL_MESSAGE;
   }
-  if (isEmpty(data.password)) errors.password = "Must not be empty";
-  if (isEmpty(data.handle)) errors.handle = "Must not be empty";
+  if (isEmpty(data.password)) errors.password = NO_EMPTY_MESSAGE;
+  if (isEmpty(data.handle)) errors.handle = NO_EMPTY_MESSAGE;
   if (data.password !== data.confirmPassword)
-    errors.confirmPassword = "Passwords must match";
+    errors.confirmPassword = MATCH_PASSWORDS_MESSAGE;
 
   return {
     errors,
@@ -27,8 +31,8 @@ exports.validateSignupData = data => {
 
 exports.validateLoginData = data => {
   let errors = {};
-  if (isEmpty(data.password)) errors.password = "Must not be empty";
-  if (isEmpty(data.email)) errors.email = "Must not be empty";
+  if (isEmpty(data.password)) errors.password = NO_EMPTY_MESSAGE;
+  if (isEmpty(data.email)) errors.email = NO_EMPTY_MESSAGE;
 
   return {
     errors,
@@ -48,4 +52,16 @@ exports.reduceUserDetails = data => {
   }
 
   return userDetails;
+};
+
+exports.validateReplyData = data => {
+  let errors = {};
+  if (isEmpty(data.description)) errors.description = NO_EMPTY_MESSAGE;
+  if (isEmpty(data.name)) errors.name = NO_EMPTY_MESSAGE;
+  if (isEmpty(data.deadline)) errors.deadline = NO_EMPTY_MESSAGE;
+
+  return {
+    errors,
+    valid: Object.keys(errors).length === 0 ? true : false
+  };
 };

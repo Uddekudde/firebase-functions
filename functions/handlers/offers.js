@@ -1,9 +1,11 @@
 const { db } = require("../util/admin");
+const { validateReplyData } = require("../util/validators");
 
 const OFFER_COLLECTION = "commission-offers";
 const OFFER_REPLIES_COLLECTION = "offer-reply";
 const OFFER_ID_FIELD = "offerId";
 
+//Get all offers
 exports.getAllOffers = (req, res) => {
   db.collection(OFFER_COLLECTION)
     .orderBy("createdAt", "desc")
@@ -28,6 +30,7 @@ exports.getAllOffers = (req, res) => {
     });
 };
 
+//Get all replies to an offer. Must be authentiated
 exports.getOfferReplies = (req, res) => {
   let offerData = {};
   db.doc(`/${OFFER_COLLECTION}/${req.params.offerId}`)
@@ -54,11 +57,13 @@ exports.getOfferReplies = (req, res) => {
           return res.json(offerData);
         })
         .catch(err => {
-          return res.status(500).json({ error: err.code });
+          console.log(err);
+          res.status(500).json({ error: err.code });
         });
     });
 };
 
+//Post an offer
 exports.postAnOffer = (req, res) => {
   const newOffer = {
     cancellation: req.body.cancellation,
@@ -77,5 +82,38 @@ exports.postAnOffer = (req, res) => {
     .catch(err => {
       res.status(500).json({ error: "something went wrong" });
       console.error(err);
+    });
+};
+
+//Post reply to an offer
+exports.postOfferReply = (req, res) => {
+  const newReply = {
+    description: req.body.description,
+    name: req.body.name,
+    deadline: req.body.deadline,
+    handle: req.user.handle,
+    createdAt: new Date().toISOString(),
+    offerId: req.params.offerId,
+    userImage: req.user.imageUrl
+  };
+
+  const { valid, errors } = validateReplyData(newReply);
+
+  if (!valid) return res.status(400).json(errors);
+
+  db.doc(`/${OFFER_COLLECTION}/${req.params.offerId}`)
+    .get()
+    .then(doc => {
+      if (!doc.exists) {
+        return res.status(404).json({ error: "Offer not found" });
+      }
+      return db.collection(OFFER_REPLIES_COLLECTION).add(newReply);
+    })
+    .then(() => {
+      res.json(newReply);
+    })
+    .catch(err => {
+      console.log(err);
+      res.status(500).json({ error: "Something went wrong" });
     });
 };

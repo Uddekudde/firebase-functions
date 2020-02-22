@@ -1,7 +1,12 @@
 const functions = require("firebase-functions");
 const express = require("express");
 const app = express();
-const { getAllOffers, postAnOffer, getOfferReplies } = require("./handlers/offers");
+const {
+  getAllOffers,
+  postAnOffer,
+  getOfferReplies,
+  postOfferReply
+} = require("./handlers/offers");
 const {
   signup,
   login,
@@ -11,16 +16,20 @@ const {
 } = require("./handlers/users");
 const { FBAuth } = require("./util/fbAuth");
 
-const OFFER_ROUTE = "/offers";
+const OFFERS_ROUTE = "/offers";
+const OFFER_ROUTE = "/offer";
 const SIGNUP_ROUTE = "/signup";
 const LOGIN_ROUTE = "/login";
 const IMAGE_ROUTE = "/user/image";
 const USER_INFO_ROUTE = "/user";
+const OFFER_REPLIES_ROUTE = "/replies/:offerId";
+const REPLY_ROUTE = `${OFFER_ROUTE}/:offerId/reply`;
 
 //Offer routes
-app.get(OFFER_ROUTE, getAllOffers);
+app.get(OFFERS_ROUTE, getAllOffers);
 app.post(OFFER_ROUTE, FBAuth, postAnOffer);
-app.get(`${OFFER_ROUTE}/:offerId`, FBAuth, getOfferReplies);
+app.get(OFFER_REPLIES_ROUTE, FBAuth, getOfferReplies);
+app.post(REPLY_ROUTE, FBAuth, postOfferReply);
 //TODO: delete offer
 //TODO: get my offers
 
