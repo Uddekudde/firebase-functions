@@ -156,3 +156,27 @@ exports.deleteOffer = (req, res) => {
       res.status(500).json({ error: err.code });
     });
 };
+
+//Delete reply
+exports.deleteReply = (req, res) => {
+  const document = db.doc(`/${OFFER_REPLIES_COLLECTION}/${req.params.replyId}`);
+
+  document
+    .get()
+    .then(doc => {
+      if (!doc.exists) {
+        return res.status(404).json({ error: "Reply not found" });
+      }
+      if (doc.data().handle !== req.user.handle) {
+        return res.status(401).json({ error: "Unauthorized" });
+      } else {
+        return document.delete().then(() => {
+          return res.json({ message: "Reply successfully deleted" });
+        });
+      }
+    })
+    .catch(err => {
+      console.log(err);
+      res.status(500).json({ error: err.code });
+    });
+};

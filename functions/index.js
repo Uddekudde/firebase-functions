@@ -6,7 +6,8 @@ const {
   postAnOffer,
   getOfferReplies,
   postOfferReply,
-  deleteOffer
+  deleteOffer,
+  deleteReply
 } = require("./handlers/offers");
 const {
   signup,
@@ -33,6 +34,7 @@ const USER_INFO_ROUTE = "/user";
 const OFFER_REPLIES_ROUTE = "/replies/:offerId";
 const REPLY_ROUTE = `${OFFER_ROUTE}/:offerId/reply`;
 const OFFER_SINGLE_ROUTE = `${OFFER_ROUTE}/:offerId`;
+const REPLY_SINGLE_ROUTE = "/reply/:replyId";
 
 //Offer routes
 app.get(OFFERS_ROUTE, getAllOffers);
@@ -40,6 +42,7 @@ app.post(OFFER_ROUTE, FBAuth, postAnOffer);
 app.get(OFFER_REPLIES_ROUTE, FBAuth, getOfferReplies);
 app.post(REPLY_ROUTE, FBAuth, postOfferReply);
 app.delete(OFFER_SINGLE_ROUTE, FBAuth, deleteOffer);
+app.delete(REPLY_SINGLE_ROUTE, FBAuth, deleteReply);
 //TODO: get my offers
 
 //Users routes
