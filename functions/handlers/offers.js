@@ -94,26 +94,65 @@ exports.postOfferReply = (req, res) => {
     handle: req.user.handle,
     createdAt: new Date().toISOString(),
     offerId: req.params.offerId,
-    userImage: req.user.imageUrl
+    userImage: req.user.imageUrl,
+    status: "open"
   };
 
   const { valid, errors } = validateReplyData(newReply);
 
   if (!valid) return res.status(400).json(errors);
 
-  db.doc(`/${OFFER_COLLECTION}/${req.params.offerId}`)
+  db.collection(OFFER_REPLIES_COLLECTION)
+    .where("handle", "==", req.user.handle)
+    .where("offerId", "==", req.params.offerId)
+    .where("status", "==", "open")
+    .limit(1)
+    .get()
+    .then(data => {
+      if (!data.empty) {
+        return res.status(404).json({
+          error: "You already have an active request for this listing"
+        });
+      } else {
+        db.doc(`/${OFFER_COLLECTION}/${req.params.offerId}`)
+          .get()
+          .then(doc => {
+            if (!doc.exists) {
+              res.status(404).json({ error: "Offer not found" });
+            }
+            return db.collection(OFFER_REPLIES_COLLECTION).add(newReply);
+          })
+          .then(() => {
+            res.json(newReply);
+          });
+      }
+    })
+    .catch(err => {
+      console.log(err);
+      res.status(500).json({ error: err.code });
+    });
+};
+
+//Delete offer
+exports.deleteOffer = (req, res) => {
+  const document = db.doc(`/${OFFER_COLLECTION}/${req.params.offerId}`);
+
+  document
     .get()
     .then(doc => {
       if (!doc.exists) {
         return res.status(404).json({ error: "Offer not found" });
       }
-      return db.collection(OFFER_REPLIES_COLLECTION).add(newReply);
-    })
-    .then(() => {
-      res.json(newReply);
+      if (doc.data().handle !== req.user.handle) {
+        return res.status(401).json({ error: "Unauthorized" });
+      } else {
+        return document.delete().then(() => {
+          return res.json({ message: "Offer successfully deleted" });
+        });
+      }
     })
     .catch(err => {
       console.log(err);
-      res.status(500).json({ error: "Something went wrong" });
+      res.status(500).json({ error: err.code });
     });
 };
