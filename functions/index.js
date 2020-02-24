@@ -16,6 +16,13 @@ const {
   getUserInfo
 } = require("./handlers/users");
 const { FBAuth } = require("./util/fbAuth");
+const { db } = require("./util/admin");
+
+const OFFER_REPLIES_COLLECTION = "offer-reply";
+const OFFER_COLLECTION = "commission-offers";
+const NOTIFICATIONS_COLLECTION = "/notifications";
+
+const REGION_EUROPE = "europe-west1";
 
 const OFFERS_ROUTE = "/offers";
 const OFFER_ROUTE = "/offer";
@@ -42,4 +49,28 @@ app.post(IMAGE_ROUTE, FBAuth, uploadImage);
 app.post(USER_INFO_ROUTE, FBAuth, addUserDetails);
 app.get(USER_INFO_ROUTE, FBAuth, getUserInfo);
 
-exports.api = functions.region("europe-west1").https.onRequest(app);
+exports.api = functions.region(REGION_EUROPE).https.onRequest(app);
+
+exports.createNotificationOnReply = functions
+  .region(REGION_EUROPE)
+  .firestore.document(`${OFFER_REPLIES_COLLECTION}/{id}`)
+  .onCreate(snapshot => {
+    return db
+      .doc(`${OFFER_COLLECTION}/${snapshot.data().offerId}`)
+      .get()
+      .then(doc => {
+        if (doc.exists) {
+          return db.doc(`${NOTIFICATIONS_COLLECTION}/${snapshot.id}`).set({
+            createdAt: new Date().toISOString(),
+            sender: snapshot.data().handle,
+            recipient: doc.data().handle,
+            type: "reply",
+            read: false,
+            offerId: doc.id
+          });
+        }
+      })
+      .catch(err => {
+        console.error(err);
+      });
+  });
