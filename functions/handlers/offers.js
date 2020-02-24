@@ -170,9 +170,15 @@ exports.deleteReply = (req, res) => {
       if (doc.data().handle !== req.user.handle) {
         return res.status(401).json({ error: "Unauthorized" });
       } else {
-        return document.delete().then(() => {
-          return res.json({ message: "Reply successfully deleted" });
-        });
+        if (doc.data().status !== "accepted") {
+          return document.delete().then(() => {
+            return res.json({ message: "Reply successfully deleted" });
+          });
+        } else {
+          return res
+            .status(403)
+            .json({ error: "Cannot delete accepted offers" });
+        }
       }
     })
     .catch(err => {
