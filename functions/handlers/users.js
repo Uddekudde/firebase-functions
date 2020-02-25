@@ -10,10 +10,12 @@ const {
 
 const EMAIL_TAKEN_ERROR = "auth/email-already-in-use";
 const WRONG_PASSWORD_ERROR = "auth/wrong-password";
+const USER_NOT_FOUND_ERROR = "user not found";
 const DEFAULT_IMAGE_NAME = "no-img.png";
 const MIMETYPE_PNG = "image/png";
 const MIMETYPE_jpeg = "image/jpeg";
 const MIMETYPE_jpg = "image/jpg";
+const NOTIFICATIONS_COLLECTION = "/notifications";
 
 //Signup new user
 exports.signup = (req, res) => {
@@ -114,15 +116,73 @@ exports.addUserDetails = (req, res) => {
     });
 };
 
-//Get own user details
+//Get any user's details
 exports.getUserInfo = (req, res) => {
+  let userData = {};
+  db.doc(`/users/${req.params.handle}`)
+    .get()
+    .then(doc => {
+      if (doc.exists) {
+        userData = doc.data();
+        return db
+          .collection("commission-offers")
+          .where("handle", "==", req.params.handle)
+          .orderBy("createdAt", "desc")
+          .get();
+      } else {
+        res.status.json({ error: USER_NOT_FOUND_ERROR });
+      }
+    })
+    .then(data => {
+      userData.offers = [];
+      data.forEach(doc => {
+        userData.offers.push({
+          cancellation: doc.data().cancellation,
+          createdAt: doc.data().createdAt,
+          description: doc.data().description,
+          example: doc.data().example,
+          handle: doc.data().handle,
+          price: doc.data().price,
+          offerId: doc.id
+        });
+      });
+      return res.json(userData);
+    })
+    .catch(err => {
+      console.log(err);
+      return res.status(500).json({ error: err.code });
+    });
+};
+
+//Get own user details
+exports.getMyUserInfo = (req, res) => {
   let userData = {};
   db.doc(`/users/${req.user.handle}`)
     .get()
     .then(doc => {
       if (doc.exists) {
         userData.credentials = doc.data();
-        return res.json(userData);
+        return db
+          .collection("notifications")
+          .where("recipient", "==", req.user.handle)
+          .orderBy("createdAt", "desc")
+          .limit(10)
+          .get()
+          .then(data => {
+            userData.notifications = [];
+            data.forEach(doc => {
+              userData.notifications.push({
+                createdAt: doc.data().createdAt,
+                offerId: doc.data().offerId,
+                recipient: doc.data().recipient,
+                sender: doc.data().sender,
+                read: doc.data().read,
+                type: doc.data().type,
+                notificationId: doc.id
+              });
+            });
+            return res.json(userData);
+          });
       } else {
         return res.json({ message: "no data found" });
       }

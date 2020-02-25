@@ -14,6 +14,7 @@ const {
   login,
   uploadImage,
   addUserDetails,
+  getMyUserInfo,
   getUserInfo
 } = require("./handlers/users");
 const { FBAuth } = require("./util/fbAuth");
@@ -31,6 +32,7 @@ const SIGNUP_ROUTE = "/signup";
 const LOGIN_ROUTE = "/login";
 const IMAGE_ROUTE = "/user/image";
 const USER_INFO_ROUTE = "/user";
+const SPECIFIC_USER_INFO_ROUTE = `${USER_INFO_ROUTE}/:handle`;
 const OFFER_REPLIES_ROUTE = "/replies/:offerId";
 const REPLY_ROUTE = `${OFFER_ROUTE}/:offerId/reply`;
 const OFFER_SINGLE_ROUTE = `${OFFER_ROUTE}/:offerId`;
@@ -49,8 +51,9 @@ app.delete(REPLY_SINGLE_ROUTE, FBAuth, deleteReply);
 app.post(SIGNUP_ROUTE, signup);
 app.post(LOGIN_ROUTE, login);
 app.post(IMAGE_ROUTE, FBAuth, uploadImage);
+app.get(SPECIFIC_USER_INFO_ROUTE, getUserInfo);
 app.post(USER_INFO_ROUTE, FBAuth, addUserDetails);
-app.get(USER_INFO_ROUTE, FBAuth, getUserInfo);
+app.get(USER_INFO_ROUTE, FBAuth, getMyUserInfo);
 
 exports.api = functions.region(REGION_EUROPE).https.onRequest(app);
 
@@ -84,9 +87,6 @@ exports.deleteNotificationOnDeletedReply = functions
   .onDelete(snapshot => {
     db.doc(`${NOTIFICATIONS_COLLECTION}/${snapshot.id}`)
       .delete()
-      .then(() => {
-        return;
-      })
       .catch(err => {
         console.error(err);
       });
