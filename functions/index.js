@@ -15,7 +15,8 @@ const {
   uploadImage,
   addUserDetails,
   getMyUserInfo,
-  getUserInfo
+  getUserInfo,
+  markNotificationsRead
 } = require("./handlers/users");
 const { FBAuth } = require("./util/fbAuth");
 const { db } = require("./util/admin");
@@ -37,6 +38,7 @@ const OFFER_REPLIES_ROUTE = "/replies/:offerId";
 const REPLY_ROUTE = `${OFFER_ROUTE}/:offerId/reply`;
 const OFFER_SINGLE_ROUTE = `${OFFER_ROUTE}/:offerId`;
 const REPLY_SINGLE_ROUTE = "/reply/:replyId";
+const NOTIFICATIONS_ROUTE = "/notifications";
 
 //Offer routes
 app.get(OFFERS_ROUTE, getAllOffers);
@@ -45,7 +47,6 @@ app.get(OFFER_REPLIES_ROUTE, FBAuth, getOfferReplies);
 app.post(REPLY_ROUTE, FBAuth, postOfferReply);
 app.delete(OFFER_SINGLE_ROUTE, FBAuth, deleteOffer);
 app.delete(REPLY_SINGLE_ROUTE, FBAuth, deleteReply);
-//TODO: get my offers
 
 //Users routes
 app.post(SIGNUP_ROUTE, signup);
@@ -54,6 +55,7 @@ app.post(IMAGE_ROUTE, FBAuth, uploadImage);
 app.get(SPECIFIC_USER_INFO_ROUTE, getUserInfo);
 app.post(USER_INFO_ROUTE, FBAuth, addUserDetails);
 app.get(USER_INFO_ROUTE, FBAuth, getMyUserInfo);
+app.post(NOTIFICATIONS_ROUTE, FBAuth, markNotificationsRead);
 
 exports.api = functions.region(REGION_EUROPE).https.onRequest(app);
 
