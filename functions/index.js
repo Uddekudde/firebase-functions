@@ -89,7 +89,7 @@ exports.deleteNotificationOnDeletedReply = functions
   .region(REGION_EUROPE)
   .firestore.document(`${OFFER_REPLIES_COLLECTION}/{id}`)
   .onDelete(snapshot => {
-    db.doc(`${NOTIFICATIONS_COLLECTION}/${snapshot.id}`)
+    return db.doc(`${NOTIFICATIONS_COLLECTION}/${snapshot.id}`)
       .delete()
       .catch(err => {
         console.error(err);
