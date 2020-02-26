@@ -1,5 +1,8 @@
 const { db } = require("../util/admin");
-const { validateReplyData } = require("../util/validators");
+const {
+  validateReplyData,
+  validateReplyStatusData
+} = require("../util/validators");
 
 const OFFER_COLLECTION = "commission-offers";
 const OFFER_REPLIES_COLLECTION = "offer-reply";
@@ -13,15 +16,8 @@ exports.getAllOffers = (req, res) => {
     .then(data => {
       let offers = [];
       data.forEach(doc => {
-        offers.push({
-          offerId: doc.id,
-          cancellation: doc.data().cancellation,
-          description: doc.data().description,
-          price: doc.data().price,
-          handle: doc.data().handle,
-          example: doc.data().example,
-          createdAt: doc.data().createdAt
-        });
+        let fields = doc.data();
+        offers.push({ ...fields, offerId: doc.id });
       });
       return res.json(offers);
     })
@@ -52,7 +48,8 @@ exports.getOfferReplies = (req, res) => {
         .then(data => {
           offerData.replies = [];
           data.forEach(doc => {
-            offerData.replies.push(doc.data());
+            let fields = doc.data();
+            offerData.replies.push({ ...fields, replyId: doc.id });
           });
           return res.json(offerData);
         })
@@ -184,5 +181,43 @@ exports.deleteReply = (req, res) => {
     .catch(err => {
       console.log(err);
       res.status(500).json({ error: err.code });
+    });
+};
+
+//Change status of a reply
+exports.confirmReply = (req, res) => {
+  let newStatus = {
+    status: req.body.status
+  };
+
+  const { valid, errors } = validateReplyStatusData(newStatus);
+
+  if (!valid) return res.status(400).json(errors);
+
+  db.doc(`${OFFER_REPLIES_COLLECTION}/${req.params.replyId}`)
+    .get()
+    .then(doc => {
+      let replyData = doc.data();
+      if (!doc.exists) {
+        return res.status(404).json({ error: "Reply not found" });
+      } else {
+        db.doc(`${OFFER_COLLECTION}/${replyData.offerId}`)
+          .get()
+          .then(offerDoc => {
+            if (req.user.handle !== offerDoc.data().handle) {
+              return res.status(401).json({ message: "Unauthorized" });
+            } else {
+              db.doc(`${OFFER_REPLIES_COLLECTION}/${req.params.replyId}`)
+                .update(newStatus)
+                .then(() => {
+                  return res.json({ message: "Status successfully updated" });
+                });
+            }
+          });
+      }
+    })
+    .catch(err => {
+      console.log(err);
+      return res.status(500).json({ error: err.code });
     });
 };

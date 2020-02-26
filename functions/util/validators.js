@@ -10,6 +10,7 @@ const isEmail = email => {
 const NO_EMPTY_MESSAGE = "Must not be empty";
 const VALID_EMAIL_MESSAGE = "Must be a valid email address";
 const MATCH_PASSWORDS_MESSAGE = "Passwords must match";
+const VALID_STATUS_MESSAGE = `Status must be "accepted" or "declined"`;
 
 exports.validateSignupData = data => {
   let errors = {};
@@ -59,6 +60,18 @@ exports.validateReplyData = data => {
   if (isEmpty(data.description)) errors.description = NO_EMPTY_MESSAGE;
   if (isEmpty(data.name)) errors.name = NO_EMPTY_MESSAGE;
   if (isEmpty(data.deadline)) errors.deadline = NO_EMPTY_MESSAGE;
+
+  return {
+    errors,
+    valid: Object.keys(errors).length === 0 ? true : false
+  };
+};
+
+exports.validateReplyStatusData = data => {
+  let errors = {};
+  if (isEmpty(data.status)) errors.status = NO_EMPTY_MESSAGE;
+  if (data.status === "accepted" || data.status === "declined") {
+  } else errors.status = VALID_STATUS_MESSAGE;
 
   return {
     errors,

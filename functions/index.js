@@ -7,7 +7,8 @@ const {
   getOfferReplies,
   postOfferReply,
   deleteOffer,
-  deleteReply
+  deleteReply,
+  confirmReply
 } = require("./handlers/offers");
 const {
   signup,
@@ -47,6 +48,7 @@ app.get(OFFER_REPLIES_ROUTE, FBAuth, getOfferReplies);
 app.post(REPLY_ROUTE, FBAuth, postOfferReply);
 app.delete(OFFER_SINGLE_ROUTE, FBAuth, deleteOffer);
 app.delete(REPLY_SINGLE_ROUTE, FBAuth, deleteReply);
+app.post(REPLY_SINGLE_ROUTE, FBAuth, confirmReply);
 
 //Users routes
 app.post(SIGNUP_ROUTE, signup);

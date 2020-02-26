@@ -136,13 +136,9 @@ exports.getUserInfo = (req, res) => {
     .then(data => {
       userData.offers = [];
       data.forEach(doc => {
+        let fields = doc.data();
         userData.offers.push({
-          cancellation: doc.data().cancellation,
-          createdAt: doc.data().createdAt,
-          description: doc.data().description,
-          example: doc.data().example,
-          handle: doc.data().handle,
-          price: doc.data().price,
+          ...fields,
           offerId: doc.id
         });
       });
@@ -170,14 +166,10 @@ exports.getMyUserInfo = (req, res) => {
           .get()
           .then(data => {
             userData.notifications = [];
+            let fields = doc.data();
             data.forEach(doc => {
               userData.notifications.push({
-                createdAt: doc.data().createdAt,
-                offerId: doc.data().offerId,
-                recipient: doc.data().recipient,
-                sender: doc.data().sender,
-                read: doc.data().read,
-                type: doc.data().type,
+                ...fields,
                 notificationId: doc.id
               });
             });
