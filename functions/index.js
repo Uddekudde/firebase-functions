@@ -24,7 +24,8 @@ const { db } = require("./util/admin");
 
 const OFFER_REPLIES_COLLECTION = "offer-reply";
 const OFFER_COLLECTION = "commission-offers";
-const NOTIFICATIONS_COLLECTION = "/notifications";
+const NOTIFICATIONS_COLLECTION = "notifications";
+const USERS_COLLECTION = "users";
 
 const REGION_EUROPE = "europe-west1";
 
@@ -70,7 +71,7 @@ exports.createNotificationOnReply = functions
       .get()
       .then(doc => {
         if (doc.exists) {
-          return db.doc(`${NOTIFICATIONS_COLLECTION}/${snapshot.id}`).set({
+          return db.doc(`/${NOTIFICATIONS_COLLECTION}/${snapshot.id}`).set({
             createdAt: new Date().toISOString(),
             sender: snapshot.data().handle,
             recipient: doc.data().handle,
@@ -89,9 +90,57 @@ exports.deleteNotificationOnDeletedReply = functions
   .region(REGION_EUROPE)
   .firestore.document(`${OFFER_REPLIES_COLLECTION}/{id}`)
   .onDelete(snapshot => {
-    return db.doc(`${NOTIFICATIONS_COLLECTION}/${snapshot.id}`)
+    return db
+      .doc(`/${NOTIFICATIONS_COLLECTION}/${snapshot.id}`)
       .delete()
       .catch(err => {
         console.error(err);
+      });
+  });
+
+exports.onUserImageCHange = functions
+  .region(REGION_EUROPE)
+  .firestore.document(`/${USERS_COLLECTION}/{userId}`)
+  .onUpdate(change => {
+    if (change.before.data().imageUrl !== change.after.data().imageUrl) {
+      let batch = db.batch();
+      return db
+        .collection(OFFER_REPLIES_COLLECTION)
+        .where("handle", "==", change.before.data().handle)
+        .get()
+        .then(data => {
+          data.forEach(doc => {
+            const offer = db.doc(`/${OFFER_REPLIES_COLLECTION}/${doc.id}`);
+            batch.update(offer, { userImage: change.after.data().imageUrl });
+          });
+          return batch.commit();
+        });
+    } else return true;
+  });
+
+exports.onOfferDelete = functions
+  .region(REGION_EUROPE)
+  .firestore.document(`/${OFFER_COLLECTION}/{offerId}`)
+  .onDelete((snapshot, context) => {
+    const offerId = context.params.offerId;
+    const batch = db.batch();
+
+    return db
+      .collection(OFFER_REPLIES_COLLECTION)
+      .where("offerId", "==", offerId)
+      .get()
+      .then(data => {
+        data.forEach(doc => {
+          batch.delete(db.doc(`/${OFFER_REPLIES_COLLECTION}/${doc.id}`));
+        });
+        return db
+          .collection(NOTIFICATIONS_COLLECTION)
+          .where("offerId", "==", offerId).get();
+      })
+      .then(data => {
+        data.forEach(doc => {
+          batch.delete(db.doc(`/${NOTIFICATIONS_COLLECTION}/${doc.id}`));
+        });
+        return batch.commit();
       });
   });
