@@ -9,6 +9,7 @@ const {
 } = require("../util/validators");
 
 const EMAIL_TAKEN_ERROR = "auth/email-already-in-use";
+const WEAK_PASSWORD_ERROR = "auth/weak-password";
 const WRONG_PASSWORD_ERROR = "auth/wrong-password";
 const USER_NOT_FOUND_ERROR = "user not found";
 const DEFAULT_IMAGE_NAME = "no-img.png";
@@ -64,6 +65,13 @@ exports.signup = (req, res) => {
       console.error(err);
       if (err.code === EMAIL_TAKEN_ERROR) {
         return res.status(400).json({ email: "Email is already in use" });
+      }
+      if (err.code === WEAK_PASSWORD_ERROR) {
+        return res
+          .status(400)
+          .json({
+            password: "Password should be at least six characters long"
+          });
       } else {
         return res
           .status(500)
