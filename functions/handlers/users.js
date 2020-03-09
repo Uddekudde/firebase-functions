@@ -67,11 +67,9 @@ exports.signup = (req, res) => {
         return res.status(400).json({ email: "Email is already in use" });
       }
       if (err.code === WEAK_PASSWORD_ERROR) {
-        return res
-          .status(400)
-          .json({
-            password: "Password should be at least six characters long"
-          });
+        return res.status(400).json({
+          password: "Password should be at least six characters long"
+        });
       } else {
         return res
           .status(500)
@@ -150,7 +148,8 @@ exports.getUserInfo = (req, res) => {
           offerId: doc.id
         });
       });
-      return res.json(userData);
+      const { email, ...withoutEmail } = userData;
+      return res.json(withoutEmail);
     })
     .catch(err => {
       console.log(err);
