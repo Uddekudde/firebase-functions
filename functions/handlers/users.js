@@ -113,12 +113,11 @@ exports.addUserDetails = (req, res) => {
   db.doc(`/users/${req.user.handle}`)
     .update(userDetails)
     .then(() => {
-      return res
-        .json({ message: "Details successfully updated" })
-        .catch(err => {
-          console.log(err);
-          return res.status(500).json({ error: err.code });
-        });
+      return res.json({ message: "Details successfully updated" });
+    })
+    .catch(err => {
+      console.log(err);
+      return res.status(500).json({ error: err.code });
     });
 };
 
