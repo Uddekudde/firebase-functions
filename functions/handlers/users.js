@@ -245,6 +245,7 @@ exports.uploadImage = (req, res) => {
   busboy.end(req.rawBody);
 };
 
+//Mark notifications as having been read
 exports.markNotificationsRead = (req, res) => {
   let batch = db.batch();
   req.body.forEach(notificationId => {

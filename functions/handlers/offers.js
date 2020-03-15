@@ -1,4 +1,5 @@
-const { db } = require("../util/admin");
+const { admin, db } = require("../util/admin");
+const firebaseConfig = require("../util/config");
 const {
   validateReplyData,
   validateReplyStatusData
@@ -7,6 +8,9 @@ const {
 const OFFER_COLLECTION = "commission-offers";
 const OFFER_REPLIES_COLLECTION = "offer-reply";
 const OFFER_ID_FIELD = "offerId";
+const MIMETYPE_PNG = "image/png";
+const MIMETYPE_jpeg = "image/jpeg";
+const MIMETYPE_jpg = "image/jpg";
 
 //Get all offers
 exports.getAllOffers = (req, res) => {
@@ -63,23 +67,65 @@ exports.getOfferReplies = (req, res) => {
 //Post an offer
 exports.postAnOffer = (req, res) => {
   const newOffer = {
-    cancellation: req.body.cancellation,
-    description: req.body.description,
-    price: req.body.price,
     handle: req.user.handle,
-    example: req.body.example,
     createdAt: new Date().toISOString()
   };
 
-  db.collection(OFFER_COLLECTION)
-    .add(newOffer)
-    .then(doc => {
-      res.json({ message: `document ${doc.id} created successfully` });
-    })
-    .catch(err => {
-      res.status(500).json({ error: "something went wrong" });
-      console.error(err);
-    });
+  const BusBoy = require("busboy");
+  const path = require("path");
+  const os = require("os");
+  const fs = require("fs");
+
+  const busboy = new BusBoy({ headers: req.headers });
+  let imageFileName;
+  let imageToBeUploaded = {};
+
+  busboy.on("field", (fieldname, val) => {
+    newOffer[fieldname] = val;
+  });
+
+  busboy.on("file", (fieldname, file, filename, encoding, mimetype) => {
+    if (
+      mimetype !== MIMETYPE_PNG &&
+      mimetype !== MIMETYPE_jpeg &&
+      mimetype !== MIMETYPE_jpg
+    ) {
+      return res.status(400).json({ message: "Wrong file type submitted" });
+    }
+    const imageExtension = filename.split(".")[filename.split(".").length - 1];
+    imageFileName = `${Math.round(
+      Math.random() * 10000000000000
+    )}.${imageExtension}`;
+    const filepath = path.join(os.tmpdir(), imageFileName);
+    imageToBeUploaded = { filepath, mimetype };
+    file.pipe(fs.createWriteStream(filepath));
+  });
+  busboy.on("finish", () => {
+    admin
+      .storage()
+      .bucket()
+      .upload(imageToBeUploaded.filepath, {
+        resumable: false,
+        metadata: {
+          metadata: {
+            contentType: imageToBeUploaded.mimetype
+          }
+        }
+      })
+      .then(() => {
+        newOffer.imageUrl = `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o/${imageFileName}?alt=media`;
+        db.collection(OFFER_COLLECTION)
+          .add(newOffer)
+          .then(doc => {
+            res.json({ message: `document ${doc.id} created successfully` });
+          });
+      })
+      .catch(err => {
+        res.status(500).json({ error: "something went wrong" });
+        console.error(err);
+      });
+  });
+  busboy.end(req.rawBody);
 };
 
 //Post reply to an offer
