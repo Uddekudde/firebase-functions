@@ -70,18 +70,27 @@ exports.postAnOffer = (req, res) => {
     handle: req.user.handle,
     createdAt: new Date().toISOString()
   };
-
+  const acceptableFields = ["price", "description", "title"];
   const BusBoy = require("busboy");
   const path = require("path");
   const os = require("os");
   const fs = require("fs");
 
-  const busboy = new BusBoy({ headers: req.headers });
+  const busboy = new BusBoy({
+    headers: req.headers,
+    limits: { fileSize: 5000000 }
+  });
   let imageFileName;
   let imageToBeUploaded = {};
+  let hasError = false;
+  let errors = {};
 
   busboy.on("field", (fieldname, val) => {
-    newOffer[fieldname] = val;
+    if (acceptableFields.includes(fieldname)) newOffer[fieldname] = val;
+    else {
+      errors.fields = "wrong field submitted";
+      hasError = true;
+    }
   });
 
   busboy.on("file", (fieldname, file, filename, encoding, mimetype) => {
@@ -90,8 +99,13 @@ exports.postAnOffer = (req, res) => {
       mimetype !== MIMETYPE_jpeg &&
       mimetype !== MIMETYPE_jpg
     ) {
-      return res.status(400).json({ message: "Wrong file type submitted" });
+      errors.fileType = "Wrong file type submitted";
+      hasError = true;
     }
+    file.on("limit", () => {
+      errors.fileSize = "5MB file size limt reached";
+      hasError = true;
+    });
     const imageExtension = filename.split(".")[filename.split(".").length - 1];
     imageFileName = `${Math.round(
       Math.random() * 10000000000000
@@ -101,6 +115,9 @@ exports.postAnOffer = (req, res) => {
     file.pipe(fs.createWriteStream(filepath));
   });
   busboy.on("finish", () => {
+    if (Object.keys(newOffer).length < 5)
+      return res.status(400).json({ message: "Missing required fields" });
+    if (hasError) return res.status(400).json(errors);
     admin
       .storage()
       .bucket()
@@ -121,8 +138,8 @@ exports.postAnOffer = (req, res) => {
           });
       })
       .catch(err => {
-        res.status(500).json({ error: "something went wrong" });
         console.error(err);
+        return res.status(500).json({ error: "something went wrong" });
       });
   });
   busboy.end(req.rawBody);
