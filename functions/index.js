@@ -5,6 +5,7 @@ const {
   getAllOffers,
   postAnOffer,
   getOfferReplies,
+  getOfferWithUser,
   postOfferReply,
   deleteOffer,
   deleteReply,
@@ -37,8 +38,8 @@ const IMAGE_ROUTE = "/user/image";
 const USER_INFO_ROUTE = "/user";
 const SPECIFIC_USER_INFO_ROUTE = `${USER_INFO_ROUTE}/:handle`;
 const OFFER_REPLIES_ROUTE = "/replies/:offerId";
-const REPLY_ROUTE = `${OFFER_ROUTE}/:offerId/reply`;
-const OFFER_SINGLE_ROUTE = `${OFFER_ROUTE}/:offerId`;
+const REPLY_ROUTE = `/offer/:offerId/reply`;
+const OFFER_SINGLE_ROUTE = `/offer/:offerId`;
 const REPLY_SINGLE_ROUTE = "/reply/:replyId";
 const NOTIFICATIONS_ROUTE = "/notifications";
 
@@ -46,6 +47,7 @@ const NOTIFICATIONS_ROUTE = "/notifications";
 app.get(OFFERS_ROUTE, getAllOffers);
 app.post(OFFER_ROUTE, FBAuth, postAnOffer);
 app.get(OFFER_REPLIES_ROUTE, FBAuth, getOfferReplies);
+app.get(OFFER_SINGLE_ROUTE, getOfferWithUser);
 app.post(REPLY_ROUTE, FBAuth, postOfferReply);
 app.delete(OFFER_SINGLE_ROUTE, FBAuth, deleteOffer);
 app.delete(REPLY_SINGLE_ROUTE, FBAuth, deleteReply);
@@ -135,7 +137,8 @@ exports.onOfferDelete = functions
         });
         return db
           .collection(NOTIFICATIONS_COLLECTION)
-          .where("offerId", "==", offerId).get();
+          .where("offerId", "==", offerId)
+          .get();
       })
       .then(data => {
         data.forEach(doc => {

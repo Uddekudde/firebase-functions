@@ -50,7 +50,6 @@ exports.signup = (req, res) => {
     .then(idToken => {
       token = idToken;
       const userCredentials = {
-        email: newUser.email,
         handle: newUser.handle,
         createdAt: new Date().toISOString(),
         imageUrl: `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o/${DEFAULT_IMAGE_NAME}?alt=media`,

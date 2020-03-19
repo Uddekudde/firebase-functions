@@ -8,6 +8,7 @@ const {
 const OFFER_COLLECTION = "commission-offers";
 const OFFER_REPLIES_COLLECTION = "offer-reply";
 const OFFER_ID_FIELD = "offerId";
+const USERS_COLLECTION = "users";
 const MIMETYPE_PNG = "image/png";
 const MIMETYPE_jpeg = "image/jpeg";
 const MIMETYPE_jpg = "image/jpg";
@@ -55,6 +56,31 @@ exports.getOfferReplies = (req, res) => {
             let fields = doc.data();
             offerData.replies.push({ ...fields, replyId: doc.id });
           });
+          return res.json(offerData);
+        })
+        .catch(err => {
+          console.log(err);
+          res.status(500).json({ error: err.code });
+        });
+    });
+};
+
+//Get an offer and info about the author
+exports.getOfferWithUser = (req, res) => {
+  let offerData = {};
+  db.doc(`/${OFFER_COLLECTION}/${req.params.offerId}`)
+    .get()
+    .then(doc => {
+      if (!doc.exists) {
+        return res.status(404).json({ error: "Offer not found" });
+      }
+      offerData = doc.data();
+      offerData.offerId = doc.id;
+      return db
+        .doc(`/${USERS_COLLECTION}/${offerData.handle}`)
+        .get()
+        .then(doc => {
+          offerData.author = doc.data();
           return res.json(offerData);
         })
         .catch(err => {
