@@ -9,7 +9,7 @@ exports.FBAuth = (req, res, next) => {
     idToken = req.headers.authorization.split("Bearer ")[1];
   } else {
     console.error("No token found");
-    return Response.status(403).json({ error: "Unathorized" });
+    return res.status(403).json({ error: "Unathorized" });
   }
 
   admin

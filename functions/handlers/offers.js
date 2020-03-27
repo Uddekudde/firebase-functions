@@ -196,7 +196,7 @@ exports.postOfferReply = (req, res) => {
     .get()
     .then(data => {
       if (!data.empty) {
-        return res.status(404).json({
+        return res.status(403).json({
           error: "You already have an active request for this listing"
         });
       } else {
