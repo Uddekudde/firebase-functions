@@ -171,8 +171,8 @@ exports.getMyUserInfo = (req, res) => {
           .get()
           .then(data => {
             userData.notifications = [];
-            let fields = doc.data();
             data.forEach(doc => {
+              let fields = doc.data();
               userData.notifications.push({
                 ...fields,
                 notificationId: doc.id
