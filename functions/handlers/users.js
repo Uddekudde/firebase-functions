@@ -256,7 +256,7 @@ exports.markNotificationsRead = (req, res) => {
   batch
     .commit()
     .then(() => {
-      return res.json({ message: "Notifications makred read" });
+      return res.json({ message: "Notifications marked read" });
     })
     .catch(err => {
       console.error(err);

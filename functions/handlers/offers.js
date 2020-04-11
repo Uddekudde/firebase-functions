@@ -2,12 +2,13 @@ const { admin, db } = require("../util/admin");
 const firebaseConfig = require("../util/config");
 const {
   validateReplyData,
-  validateReplyStatusData
+  validateReplyStatusData,
 } = require("../util/validators");
 
 const OFFER_COLLECTION = "commission-offers";
 const OFFER_REPLIES_COLLECTION = "offer-reply";
 const OFFER_ID_FIELD = "offerId";
+const OFFER_OWNER_FIELD = "offerOwner";
 const USERS_COLLECTION = "users";
 const MIMETYPE_PNG = "image/png";
 const MIMETYPE_jpeg = "image/jpeg";
@@ -18,15 +19,15 @@ exports.getAllOffers = (req, res) => {
   db.collection(OFFER_COLLECTION)
     .orderBy("createdAt", "desc")
     .get()
-    .then(data => {
+    .then((data) => {
       let offers = [];
-      data.forEach(doc => {
+      data.forEach((doc) => {
         let fields = doc.data();
         offers.push({ ...fields, offerId: doc.id });
       });
       return res.json(offers);
     })
-    .catch(err => {
+    .catch((err) => {
       console.error(err);
     });
 };
@@ -36,7 +37,7 @@ exports.getOfferReplies = (req, res) => {
   let offerData = {};
   db.doc(`/${OFFER_COLLECTION}/${req.params.offerId}`)
     .get()
-    .then(doc => {
+    .then((doc) => {
       if (!doc.exists) {
         return res.status(404).json({ error: "Offer not found" });
       }
@@ -50,18 +51,39 @@ exports.getOfferReplies = (req, res) => {
         .orderBy("createdAt", "desc")
         .where(OFFER_ID_FIELD, "==", req.params.offerId)
         .get()
-        .then(data => {
+        .then((data) => {
           offerData.replies = [];
-          data.forEach(doc => {
+          data.forEach((doc) => {
             let fields = doc.data();
             offerData.replies.push({ ...fields, replyId: doc.id });
           });
           return res.json(offerData);
         })
-        .catch(err => {
+        .catch((err) => {
           console.log(err);
           res.status(500).json({ error: err.code });
         });
+    });
+};
+
+//Get all replies to a user's offers
+exports.getAllRepliesForUser = (req, res) => {
+  let offerData = {};
+  db.collection(OFFER_REPLIES_COLLECTION)
+    .orderBy("createdAt", "desc")
+    .where(OFFER_OWNER_FIELD, "==", req.user.handle)
+    .get()
+    .then((data) => {
+      offerData.replies = [];
+      data.forEach((doc) => {
+        let fields = doc.data();
+        offerData.replies.push({ ...fields, replyId: doc.id });
+      });
+      return res.json(offerData);
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(500).json({ error: err.code });
     });
 };
 
@@ -70,7 +92,7 @@ exports.getOfferWithUser = (req, res) => {
   let offerData = {};
   db.doc(`/${OFFER_COLLECTION}/${req.params.offerId}`)
     .get()
-    .then(doc => {
+    .then((doc) => {
       if (!doc.exists) {
         return res.status(404).json({ error: "Offer not found" });
       }
@@ -79,11 +101,11 @@ exports.getOfferWithUser = (req, res) => {
       return db
         .doc(`/${USERS_COLLECTION}/${offerData.handle}`)
         .get()
-        .then(doc => {
+        .then((doc) => {
           offerData.author = doc.data();
           return res.json(offerData);
         })
-        .catch(err => {
+        .catch((err) => {
           console.log(err);
           res.status(500).json({ error: err.code });
         });
@@ -94,7 +116,7 @@ exports.getOfferWithUser = (req, res) => {
 exports.postAnOffer = (req, res) => {
   const newOffer = {
     handle: req.user.handle,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   };
   const acceptableFields = ["price", "description", "title"];
   const BusBoy = require("busboy");
@@ -104,7 +126,7 @@ exports.postAnOffer = (req, res) => {
 
   const busboy = new BusBoy({
     headers: req.headers,
-    limits: { fileSize: 5000000 }
+    limits: { fileSize: 5000000 },
   });
   let imageFileName;
   let imageToBeUploaded = {};
@@ -151,19 +173,19 @@ exports.postAnOffer = (req, res) => {
         resumable: false,
         metadata: {
           metadata: {
-            contentType: imageToBeUploaded.mimetype
-          }
-        }
+            contentType: imageToBeUploaded.mimetype,
+          },
+        },
       })
       .then(() => {
         newOffer.imageUrl = `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o/${imageFileName}?alt=media`;
         db.collection(OFFER_COLLECTION)
           .add(newOffer)
-          .then(doc => {
+          .then((doc) => {
             res.json({ message: `document ${doc.id} created successfully` });
           });
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
         return res.status(500).json({ error: "something went wrong" });
       });
@@ -181,7 +203,7 @@ exports.postOfferReply = (req, res) => {
     createdAt: new Date().toISOString(),
     offerId: req.params.offerId,
     userImage: req.user.imageUrl,
-    status: "open"
+    status: "open",
   };
 
   const { valid, errors } = validateReplyData(newReply);
@@ -194,18 +216,19 @@ exports.postOfferReply = (req, res) => {
     .where("status", "==", "open")
     .limit(1)
     .get()
-    .then(data => {
+    .then((data) => {
       if (!data.empty) {
         return res.status(403).json({
-          error: "You already have an active request for this listing"
+          error: "You already have an active request for this listing",
         });
       } else {
         db.doc(`/${OFFER_COLLECTION}/${req.params.offerId}`)
           .get()
-          .then(doc => {
+          .then((doc) => {
             if (!doc.exists) {
               res.status(404).json({ error: "Offer not found" });
             }
+            newReply.offerOwner = doc.data().handle;
             return db.collection(OFFER_REPLIES_COLLECTION).add(newReply);
           })
           .then(() => {
@@ -213,7 +236,7 @@ exports.postOfferReply = (req, res) => {
           });
       }
     })
-    .catch(err => {
+    .catch((err) => {
       console.log(err);
       res.status(500).json({ error: err.code });
     });
@@ -225,7 +248,7 @@ exports.deleteOffer = (req, res) => {
 
   document
     .get()
-    .then(doc => {
+    .then((doc) => {
       if (!doc.exists) {
         return res.status(404).json({ error: "Offer not found" });
       }
@@ -237,7 +260,7 @@ exports.deleteOffer = (req, res) => {
         });
       }
     })
-    .catch(err => {
+    .catch((err) => {
       console.log(err);
       res.status(500).json({ error: err.code });
     });
@@ -249,7 +272,7 @@ exports.deleteReply = (req, res) => {
 
   document
     .get()
-    .then(doc => {
+    .then((doc) => {
       if (!doc.exists) {
         return res.status(404).json({ error: "Reply not found" });
       }
@@ -267,7 +290,7 @@ exports.deleteReply = (req, res) => {
         }
       }
     })
-    .catch(err => {
+    .catch((err) => {
       console.log(err);
       res.status(500).json({ error: err.code });
     });
@@ -276,7 +299,7 @@ exports.deleteReply = (req, res) => {
 //Change status of a reply
 exports.confirmReply = (req, res) => {
   let newStatus = {
-    status: req.body.status
+    status: req.body.status,
   };
 
   const { valid, errors } = validateReplyStatusData(newStatus);
@@ -285,14 +308,14 @@ exports.confirmReply = (req, res) => {
 
   db.doc(`${OFFER_REPLIES_COLLECTION}/${req.params.replyId}`)
     .get()
-    .then(doc => {
+    .then((doc) => {
       let replyData = doc.data();
       if (!doc.exists) {
         return res.status(404).json({ error: "Reply not found" });
       } else {
         db.doc(`${OFFER_COLLECTION}/${replyData.offerId}`)
           .get()
-          .then(offerDoc => {
+          .then((offerDoc) => {
             if (req.user.handle !== offerDoc.data().handle) {
               return res.status(401).json({ message: "Unauthorized" });
             } else {
@@ -305,7 +328,7 @@ exports.confirmReply = (req, res) => {
           });
       }
     })
-    .catch(err => {
+    .catch((err) => {
       console.log(err);
       return res.status(500).json({ error: err.code });
     });

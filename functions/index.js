@@ -5,11 +5,12 @@ const {
   getAllOffers,
   postAnOffer,
   getOfferReplies,
+  getAllRepliesForUser,
   getOfferWithUser,
   postOfferReply,
   deleteOffer,
   deleteReply,
-  confirmReply
+  confirmReply,
 } = require("./handlers/offers");
 const {
   signup,
@@ -18,7 +19,7 @@ const {
   addUserDetails,
   getMyUserInfo,
   getUserInfo,
-  markNotificationsRead
+  markNotificationsRead,
 } = require("./handlers/users");
 const { FBAuth } = require("./util/fbAuth");
 const { db } = require("./util/admin");
@@ -37,7 +38,8 @@ const LOGIN_ROUTE = "/login";
 const IMAGE_ROUTE = "/user/image";
 const USER_INFO_ROUTE = "/user";
 const SPECIFIC_USER_INFO_ROUTE = `${USER_INFO_ROUTE}/:handle`;
-const OFFER_REPLIES_ROUTE = "/replies/:offerId";
+const REPLIES_ROUTE = "/replies";
+const OFFER_REPLIES_ROUTE = `${REPLIES_ROUTE}/:offerId`;
 const REPLY_ROUTE = `/offer/:offerId/reply`;
 const OFFER_SINGLE_ROUTE = `/offer/:offerId`;
 const REPLY_SINGLE_ROUTE = "/reply/:replyId";
@@ -47,6 +49,7 @@ const NOTIFICATIONS_ROUTE = "/notifications";
 app.get(OFFERS_ROUTE, getAllOffers);
 app.post(OFFER_ROUTE, FBAuth, postAnOffer);
 app.get(OFFER_REPLIES_ROUTE, FBAuth, getOfferReplies);
+app.get(REPLIES_ROUTE, FBAuth, getAllRepliesForUser);
 app.get(OFFER_SINGLE_ROUTE, getOfferWithUser);
 app.post(REPLY_ROUTE, FBAuth, postOfferReply);
 app.delete(OFFER_SINGLE_ROUTE, FBAuth, deleteOffer);
@@ -67,11 +70,11 @@ exports.api = functions.region(REGION_EUROPE).https.onRequest(app);
 exports.createNotificationOnReply = functions
   .region(REGION_EUROPE)
   .firestore.document(`${OFFER_REPLIES_COLLECTION}/{id}`)
-  .onCreate(snapshot => {
+  .onCreate((snapshot) => {
     return db
       .doc(`${OFFER_COLLECTION}/${snapshot.data().offerId}`)
       .get()
-      .then(doc => {
+      .then((doc) => {
         if (doc.exists) {
           return db.doc(`/${NOTIFICATIONS_COLLECTION}/${snapshot.id}`).set({
             createdAt: new Date().toISOString(),
@@ -79,11 +82,11 @@ exports.createNotificationOnReply = functions
             recipient: doc.data().handle,
             type: "reply",
             read: false,
-            offerId: doc.id
+            offerId: doc.id,
           });
         }
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
       });
   });
@@ -91,11 +94,11 @@ exports.createNotificationOnReply = functions
 exports.deleteNotificationOnDeletedReply = functions
   .region(REGION_EUROPE)
   .firestore.document(`${OFFER_REPLIES_COLLECTION}/{id}`)
-  .onDelete(snapshot => {
+  .onDelete((snapshot) => {
     return db
       .doc(`/${NOTIFICATIONS_COLLECTION}/${snapshot.id}`)
       .delete()
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
       });
   });
@@ -103,15 +106,15 @@ exports.deleteNotificationOnDeletedReply = functions
 exports.onUserImageCHange = functions
   .region(REGION_EUROPE)
   .firestore.document(`/${USERS_COLLECTION}/{userId}`)
-  .onUpdate(change => {
+  .onUpdate((change) => {
     if (change.before.data().imageUrl !== change.after.data().imageUrl) {
       let batch = db.batch();
       return db
         .collection(OFFER_REPLIES_COLLECTION)
         .where("handle", "==", change.before.data().handle)
         .get()
-        .then(data => {
-          data.forEach(doc => {
+        .then((data) => {
+          data.forEach((doc) => {
             const offer = db.doc(`/${OFFER_REPLIES_COLLECTION}/${doc.id}`);
             batch.update(offer, { userImage: change.after.data().imageUrl });
           });
@@ -131,8 +134,8 @@ exports.onOfferDelete = functions
       .collection(OFFER_REPLIES_COLLECTION)
       .where("offerId", "==", offerId)
       .get()
-      .then(data => {
-        data.forEach(doc => {
+      .then((data) => {
+        data.forEach((doc) => {
           batch.delete(db.doc(`/${OFFER_REPLIES_COLLECTION}/${doc.id}`));
         });
         return db
@@ -140,8 +143,8 @@ exports.onOfferDelete = functions
           .where("offerId", "==", offerId)
           .get();
       })
-      .then(data => {
-        data.forEach(doc => {
+      .then((data) => {
+        data.forEach((doc) => {
           batch.delete(db.doc(`/${NOTIFICATIONS_COLLECTION}/${doc.id}`));
         });
         return batch.commit();
