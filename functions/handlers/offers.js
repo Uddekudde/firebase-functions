@@ -9,6 +9,7 @@ const OFFER_COLLECTION = "commission-offers";
 const OFFER_REPLIES_COLLECTION = "offer-reply";
 const OFFER_ID_FIELD = "offerId";
 const OFFER_OWNER_FIELD = "offerOwner";
+const REPLY_HANDLE_FIELD = "handle";
 const USERS_COLLECTION = "users";
 const MIMETYPE_PNG = "image/png";
 const MIMETYPE_jpeg = "image/jpeg";
@@ -72,6 +73,27 @@ exports.getAllRepliesForUser = (req, res) => {
   db.collection(OFFER_REPLIES_COLLECTION)
     .orderBy("createdAt", "desc")
     .where(OFFER_OWNER_FIELD, "==", req.user.handle)
+    .get()
+    .then((data) => {
+      offerData.replies = [];
+      data.forEach((doc) => {
+        let fields = doc.data();
+        offerData.replies.push({ ...fields, replyId: doc.id });
+      });
+      return res.json(offerData);
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(500).json({ error: err.code });
+    });
+};
+
+//Get all replies a user has made to offers.
+exports.getAllRepliesByUser = (req, res) => {
+  let offerData = {};
+  db.collection(OFFER_REPLIES_COLLECTION)
+    .orderBy("createdAt", "desc")
+    .where(REPLY_HANDLE_FIELD, "==", req.user.handle)
     .get()
     .then((data) => {
       offerData.replies = [];
