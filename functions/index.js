@@ -6,6 +6,7 @@ const {
   postAnOffer,
   getOfferReplies,
   getAllRepliesForUser,
+  getAllRepliesByUser,
   getOfferWithUser,
   postOfferReply,
   deleteOffer,
@@ -28,7 +29,6 @@ const OFFER_REPLIES_COLLECTION = "offer-reply";
 const OFFER_COLLECTION = "commission-offers";
 const NOTIFICATIONS_COLLECTION = "notifications";
 const USERS_COLLECTION = "users";
-
 const REGION_EUROPE = "europe-west1";
 
 const OFFERS_ROUTE = "/offers";
@@ -39,6 +39,7 @@ const IMAGE_ROUTE = "/user/image";
 const USER_INFO_ROUTE = "/user";
 const SPECIFIC_USER_INFO_ROUTE = `${USER_INFO_ROUTE}/:handle`;
 const REPLIES_ROUTE = "/replies";
+const REPLIES_BY_ROUTE = "/projects";
 const OFFER_REPLIES_ROUTE = `${REPLIES_ROUTE}/:offerId`;
 const REPLY_ROUTE = `/offer/:offerId/reply`;
 const OFFER_SINGLE_ROUTE = `/offer/:offerId`;
@@ -50,6 +51,7 @@ app.get(OFFERS_ROUTE, getAllOffers);
 app.post(OFFER_ROUTE, FBAuth, postAnOffer);
 app.get(OFFER_REPLIES_ROUTE, FBAuth, getOfferReplies);
 app.get(REPLIES_ROUTE, FBAuth, getAllRepliesForUser);
+app.get(REPLIES_BY_ROUTE, FBAuth, getAllRepliesByUser);
 app.get(OFFER_SINGLE_ROUTE, getOfferWithUser);
 app.post(REPLY_ROUTE, FBAuth, postOfferReply);
 app.delete(OFFER_SINGLE_ROUTE, FBAuth, deleteOffer);
@@ -149,4 +151,25 @@ exports.onOfferDelete = functions
         });
         return batch.commit();
       });
+  });
+
+exports.createNotificationOnReplyStatusChange = functions
+  .region(REGION_EUROPE)
+  .firestore.document(`${OFFER_REPLIES_COLLECTION}/{id}`)
+  .onUpdate((snapshot, context) => {
+    if (snapshot.before.data().status !== snapshot.after.data().status) {
+      return db
+        .collection(NOTIFICATIONS_COLLECTION)
+        .add({
+          createdAt: new Date().toISOString(),
+          sender: snapshot.after.data().offerOwner,
+          recipient: snapshot.after.data().handle,
+          type: "status",
+          read: false,
+          replyId: context.params.id,
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    } else return true;
   });
